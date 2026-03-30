@@ -51,4 +51,4 @@ model_list:
       api_base: http://host.docker.internal:11434
 
 general_settings:
-  master_key: os.environ/LITELLM_MASTER_KEY   # used as the API key OpenHands sends
+  # No master_key — LiteLLM is internal Docker network only, auth not needed.
