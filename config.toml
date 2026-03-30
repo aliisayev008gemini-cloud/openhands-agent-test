@@ -1,0 +1,15 @@
+[core]
+workspace_base = "/workspace"
+
+[llm]
+# model and api_key are set via environment variables LLM_MODEL / LLM_API_KEY
+temperature = 0.0
+max_retries = 3
+
+[agent]
+name = "CodeActAgent"
+enable_browsing = false
+
+[sandbox]
+timeout = 120
+user_id = 1000

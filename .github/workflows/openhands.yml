@@ -1,0 +1,41 @@
+# Alternative trigger: run OpenHands via GitHub Actions instead of a webhook server.
+# Fires when someone comments "/openhands <task>" on an issue or PR.
+
+name: OpenHands Agent
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  run-agent:
+    if: |
+      github.event.issue != null &&
+      startsWith(github.event.comment.body, '/openhands')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Extract task
+        id: task
+        run: |
+          TASK="${{ github.event.comment.body }}"
+          TASK="${TASK#/openhands}"   # strip the /openhands prefix
+          TASK="${TASK## }"           # trim leading space
+          echo "text=$TASK" >> "$GITHUB_OUTPUT"
+
+      - name: Run OpenHands
+        uses: All-Hands-AI/OpenHands-action@v0.1
+        with:
+          task: |
+            Issue: ${{ github.event.issue.title }}
+            ${{ github.event.issue.body }}
+
+            Requested action: ${{ steps.task.outputs.text }}
+          llm-model: ${{ secrets.LLM_MODEL }}
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          max-iterations: 30
