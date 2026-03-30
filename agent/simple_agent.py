@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -59,9 +58,9 @@ class SimpleAgent:
             return resp.json()["conversation_id"]
 
     async def _wait_for_completion(self, conversation_id: str) -> ConversationResult:
-        deadline = asyncio.get_event_loop().time() + self.timeout
+        deadline = asyncio.get_running_loop().time() + self.timeout
         async with httpx.AsyncClient(timeout=30) as client:
-            while asyncio.get_event_loop().time() < deadline:
+            while asyncio.get_running_loop().time() < deadline:
                 resp = await client.get(
                     f"{self.base_url}/api/conversations/{conversation_id}"
                 )
