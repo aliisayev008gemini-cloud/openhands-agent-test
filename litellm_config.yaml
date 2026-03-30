@@ -1,0 +1,49 @@
+# LiteLLM proxy configuration
+# Add any model you want to use — just supply the matching API key in .env
+# OpenHands will call LiteLLM using the model name set in LLM_MODEL.
+#
+# Supported providers: https://docs.litellm.ai/docs/providers
+
+model_list:
+  # ── OpenAI ────────────────────────────────────────────────────────────────
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  # ── Anthropic ─────────────────────────────────────────────────────────────
+  - model_name: claude-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: claude-haiku
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # ── Google Gemini ─────────────────────────────────────────────────────────
+  - model_name: gemini-pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+
+  # ── Groq ──────────────────────────────────────────────────────────────────
+  - model_name: llama3
+    litellm_params:
+      model: groq/llama3-70b-8192
+      api_key: os.environ/GROQ_API_KEY
+
+  # ── Ollama (local) ────────────────────────────────────────────────────────
+  - model_name: ollama-llama3
+    litellm_params:
+      model: ollama/llama3
+      api_base: http://host.docker.internal:11434
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY   # used as the API key OpenHands sends

@@ -1,4 +1,23 @@
 services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    environment:
+      # Provider API keys — only set the ones you use
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
   openhands:
     image: docker.all-hands.dev/all-hands-ai/openhands:0.39
     container_name: openhands
@@ -12,11 +31,13 @@ services:
     environment:
       SANDBOX_RUNTIME_CONTAINER_IMAGE: docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik
       LOG_ALL_EVENTS: "true"
-      LLM_MODEL: ${LLM_MODEL}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL}           # must match a model_name in litellm_config.yaml
+      LLM_API_KEY: ${LITELLM_MASTER_KEY} # LiteLLM master key acts as the API key
+      LLM_BASE_URL: http://litellm:4000  # route all LLM calls through LiteLLM
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - litellm
     restart: unless-stopped
 
   webhook:
