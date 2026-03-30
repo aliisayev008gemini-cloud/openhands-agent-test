@@ -28,6 +28,10 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    environment:
+      CADDY_HOST: ${CADDY_HOST}
+      CADDY_USER: ${CADDY_USER}
+      CADDY_PASSWORD_HASH: ${CADDY_PASSWORD_HASH}
     depends_on:
       - openhands
     restart: unless-stopped
