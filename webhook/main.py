@@ -6,6 +6,12 @@ Supported triggers
 * An issue is labeled **openhands**  →  agent works on the issue
 * A comment on an issue or PR contains **@openhands**  →  agent works on the task
 
+Flow
+----
+1. FastAPI validates the signature and immediately returns 202 Accepted.
+2. The agent runs in a BackgroundTask — GitHub never times out waiting.
+3. When the agent finishes it posts the result back as a GitHub comment.
+
 Setup
 -----
 1. Copy .env.example → .env and fill in the values.
@@ -19,12 +25,13 @@ Setup
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import logging
 import os
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from agent.simple_agent import SimpleAgent
@@ -65,82 +72,6 @@ def _build_task(title: str, body: str, repo_url: str) -> str:
     )
 
 
-# ── Webhook endpoint ──────────────────────────────────────────────────────────
-
-@app.post("/webhook/github")
-async def github_webhook(
-    request: Request,
-    x_hub_signature_256: str | None = Header(None),
-    x_github_event: str | None = Header(None),
-) -> JSONResponse:
-    payload_bytes = await request.body()
-    _verify_signature(payload_bytes, x_hub_signature_256)
-    event = await request.json()
-
-    if x_github_event == "issues":
-        await _handle_issue_event(event)
-
-    elif x_github_event == "issue_comment":
-        await _handle_comment_event(event)
-
-    return JSONResponse({"status": "ok"})
-
-
-# ── Event handlers ────────────────────────────────────────────────────────────
-
-async def _handle_issue_event(event: dict) -> None:
-    action: str = event.get("action", "")
-    if action != "labeled":
-        return
-    if event.get("label", {}).get("name") != "openhands":
-        return
-
-    issue = event["issue"]
-    repo = event["repository"]
-    owner, repo_name = repo["full_name"].split("/")
-
-    task = _build_task(issue["title"], issue["body"], repo["html_url"])
-    logger.info("Issue #%d labeled 'openhands' — starting agent", issue["number"])
-
-    await github.post_issue_comment(
-        owner, repo_name, issue["number"],
-        "**OpenHands** is working on this issue. I'll post an update when done.",
-    )
-    result = await agent.run(task)
-    reply = _format_result(result)
-    await github.post_issue_comment(owner, repo_name, issue["number"], reply)
-
-
-async def _handle_comment_event(event: dict) -> None:
-    action: str = event.get("action", "")
-    if action != "created":
-        return
-    comment_body: str = event.get("comment", {}).get("body", "")
-    if "@openhands" not in comment_body:
-        return
-
-    issue = event["issue"]
-    repo = event["repository"]
-    owner, repo_name = repo["full_name"].split("/")
-
-    # Strip the mention so the agent sees the actual instruction
-    instruction = comment_body.replace("@openhands", "").strip()
-    task = _build_task(
-        f"Requested via comment on #{issue['number']}: {issue['title']}",
-        instruction or issue.get("body", ""),
-        repo["html_url"],
-    )
-    logger.info("Comment trigger on #%d — starting agent", issue["number"])
-
-    await github.post_issue_comment(
-        owner, repo_name, issue["number"],
-        "**OpenHands** received your request and is working on it.",
-    )
-    result = await agent.run(task)
-    reply = _format_result(result)
-    await github.post_issue_comment(owner, repo_name, issue["number"], reply)
-
-
 def _format_result(result) -> str:
     status_emoji = {"stopped": "✅", "error": "❌", "timeout": "⏱️"}.get(result.status, "ℹ️")
     msg = result.last_message or "_No output returned._"
@@ -149,6 +80,88 @@ def _format_result(result) -> str:
         f"{msg}\n\n"
         f"<sub>Conversation ID: `{result.conversation_id}`</sub>"
     )
+
+
+# ── Webhook endpoint ──────────────────────────────────────────────────────────
+
+@app.post("/webhook/github", status_code=202)
+async def github_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_hub_signature_256: str | None = Header(None),
+    x_github_event: str | None = Header(None),
+) -> JSONResponse:
+    payload_bytes = await request.body()
+    _verify_signature(payload_bytes, x_hub_signature_256)
+    event = await request.json()
+
+    if x_github_event == "issues":
+        task_fn = _handle_issue_event(event)
+        if task_fn is not None:
+            background_tasks.add_task(_run, task_fn)
+
+    elif x_github_event == "issue_comment":
+        task_fn = _handle_comment_event(event)
+        if task_fn is not None:
+            background_tasks.add_task(_run, task_fn)
+
+    # Return immediately — agent work happens in the background
+    return JSONResponse({"status": "accepted"}, status_code=202)
+
+
+async def _run(coro) -> None:
+    """Await a coroutine inside a BackgroundTask, logging any exceptions."""
+    try:
+        await coro
+    except Exception:
+        logger.exception("Background agent task failed")
+
+
+# ── Event handlers — return a coroutine or None ───────────────────────────────
+
+def _handle_issue_event(event: dict):
+    if event.get("action") != "labeled":
+        return None
+    if event.get("label", {}).get("name") != "openhands":
+        return None
+
+    issue = event["issue"]
+    repo = event["repository"]
+    owner, repo_name = repo["full_name"].split("/")
+    task = _build_task(issue["title"], issue["body"], repo["html_url"])
+    logger.info("Issue #%d labeled 'openhands' — queuing agent", issue["number"])
+
+    return _run_agent_and_reply(owner, repo_name, issue["number"], task)
+
+
+def _handle_comment_event(event: dict):
+    if event.get("action") != "created":
+        return None
+    comment_body: str = event.get("comment", {}).get("body", "")
+    if "@openhands" not in comment_body:
+        return None
+
+    issue = event["issue"]
+    repo = event["repository"]
+    owner, repo_name = repo["full_name"].split("/")
+    instruction = comment_body.replace("@openhands", "").strip()
+    task = _build_task(
+        f"Requested via comment on #{issue['number']}: {issue['title']}",
+        instruction or issue.get("body", ""),
+        repo["html_url"],
+    )
+    logger.info("Comment trigger on #%d — queuing agent", issue["number"])
+
+    return _run_agent_and_reply(owner, repo_name, issue["number"], task)
+
+
+async def _run_agent_and_reply(owner: str, repo_name: str, issue_number: int, task: str) -> None:
+    await github.post_issue_comment(
+        owner, repo_name, issue_number,
+        "**OpenHands** is on it. I'll post an update here when done.",
+    )
+    result = await agent.run(task)
+    await github.post_issue_comment(owner, repo_name, issue_number, _format_result(result))
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
