@@ -9,9 +9,6 @@ services:
     environment:
       # Provider API keys — only set the ones you use
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     extra_hosts:
@@ -21,9 +18,12 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: caddy
+    cap_add:
+      - NET_ADMIN
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
