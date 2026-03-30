@@ -33,18 +33,18 @@ services:
     restart: unless-stopped
 
   openhands:
-    image: docker.all-hands.dev/all-hands-ai/openhands:0.39
-    container_name: openhands
+    image: docker.openhands.dev/openhands/openhands:1.6
+    pull_policy: always
+    container_name: openhands-app
     # port 3000 no longer exposed directly — access via Caddy only
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - openhands-state:/.openhands-state
-      - ./workspace:/workspace
-      - ./config.toml:/app/config.toml:ro
+      - ~/.openhands:/.openhands
     environment:
-      SANDBOX_RUNTIME_CONTAINER_IMAGE: docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik
+      AGENT_SERVER_IMAGE_REPOSITORY: ghcr.io/openhands/agent-server
+      AGENT_SERVER_IMAGE_TAG: 1.15.0-python
       LOG_ALL_EVENTS: "true"
-      LLM_MODEL: ${LLM_MODEL}           # must match a model_name in litellm_config.yaml
+      LLM_MODEL: ${LLM_MODEL}            # must match a model_name in litellm_config.yaml
       LLM_API_KEY: ${LITELLM_MASTER_KEY} # LiteLLM master key acts as the API key
       LLM_BASE_URL: http://litellm:4000  # route all LLM calls through LiteLLM
     extra_hosts:
@@ -67,6 +67,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  openhands-state:
   caddy-data:
   caddy-config:
