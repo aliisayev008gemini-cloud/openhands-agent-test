@@ -1,0 +1,11 @@
+# Replace with your actual domain, or use your server's IP for LAN-only access.
+# Caddy auto-provisions a free TLS certificate when a real domain is used.
+{$CADDY_HOST} {
+
+    # Basic auth — protects the UI with a username/password on your phone
+    basicauth {
+        {$CADDY_USER} {$CADDY_PASSWORD_HASH}
+    }
+
+    reverse_proxy openhands:3000
+}
