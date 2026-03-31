@@ -67,9 +67,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ~/.openhands:/.openhands
     environment:
-      WEB_HOST: "https://vibephone.tgimaginarium.shop"
-      SANDBOX_CONTAINER_URL_PATTERN: "http://vibephone.tgimaginarium.shop:{port}"
-      OH_ALLOW_CORS_ORIGINS_0: "https://vibephone.tgimaginarium.shop"
+      WEB_HOST: "https://alivibe.tgimaginarium.shop"
+      SANDBOX_CONTAINER_URL_PATTERN: "http://alivibe.tgimaginarium.shop:{port}"
+      OH_ALLOW_CORS_ORIGINS_0: "https://alivibe.tgimaginarium.shop"
       AGENT_SERVER_IMAGE_REPOSITORY: ghcr.io/openhands/agent-server
       AGENT_SERVER_IMAGE_TAG: 1.15.0-python
       LOG_ALL_EVENTS: "true"
