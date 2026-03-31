@@ -57,6 +57,10 @@ services:
     depends_on:
       - openhands
     restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - alivibe.tgimaginarium.shop
 
   openhands:
     image: docker.openhands.dev/openhands/openhands:1.6
