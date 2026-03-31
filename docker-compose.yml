@@ -69,7 +69,7 @@ services:
     environment:
       WEB_HOST: "https://alivibe.tgimaginarium.shop"
       SANDBOX_CONTAINER_URL_PATTERN: "https://alivibe.tgimaginarium.shop/sandbox/{port}"
-      OH_PERMITTED_CORS_ORIGINS: "https://alivibe.tgimaginarium.shop"
+      OH_PERMITTED_CORS_ORIGINS: '["https://alivibe.tgimaginarium.shop"]'
       AGENT_SERVER_IMAGE_REPOSITORY: ghcr.io/openhands/agent-server
       AGENT_SERVER_IMAGE_TAG: 1.15.0-python
       LOG_ALL_EVENTS: "true"
