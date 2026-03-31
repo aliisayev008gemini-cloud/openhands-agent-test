@@ -2,20 +2,23 @@
 # Caddy auto-provisions a free TLS certificate when a real domain is used.
 {$CADDY_HOST} {
 
-    # Basic auth — protects the UI with a username/password on your phone
-    basicauth {
-        {$CADDY_USER} {$CADDY_PASSWORD_HASH}
+    # 1. Send sandbox WebSocket traffic to the Nginx helper (NO AUTH HERE)
+    handle_path /sandbox/* {
+        reverse_proxy nginx-sandbox:8080
     }
 
-    reverse_proxy openhands:3000
+    # 2. Send all other normal traffic to the OpenHands UI
+    handle {
+        # Basic auth — protects the UI with a username/password on your phone
+        basicauth {
+            {$CADDY_USER} {$CADDY_PASSWORD_HASH}
+        }
+        reverse_proxy openhands:3000
+    }
 }
 
 # LiteLLM Admin UI
 {$CADDY_HOST}:4001 {
-    # Basic auth — protects the UI with a username/password on your phone
-    basicauth {
-        {$CADDY_USER} {$CADDY_PASSWORD_HASH}
-    }
-
+    # Basic auth REMOVED here to prevent the infinite login loop bug!
     reverse_proxy litellm:4000
 }

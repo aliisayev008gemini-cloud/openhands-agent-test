@@ -68,8 +68,8 @@ services:
       - ~/.openhands:/.openhands
     environment:
       WEB_HOST: "https://alivibe.tgimaginarium.shop"
-      SANDBOX_CONTAINER_URL_PATTERN: "http://alivibe.tgimaginarium.shop:{port}"
-      OH_ALLOW_CORS_ORIGINS_0: "https://alivibe.tgimaginarium.shop"
+      SANDBOX_CONTAINER_URL_PATTERN: "https://alivibe.tgimaginarium.shop/sandbox/{port}"
+      OH_PERMITTED_CORS_ORIGINS: "https://alivibe.tgimaginarium.shop"
       AGENT_SERVER_IMAGE_REPOSITORY: ghcr.io/openhands/agent-server
       AGENT_SERVER_IMAGE_TAG: 1.15.0-python
       LOG_ALL_EVENTS: "true"
@@ -80,6 +80,17 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - litellm
+    restart: unless-stopped
+
+  nginx-sandbox:
+    image: nginx:alpine
+    container_name: nginx-sandbox
+    volumes:
+      - ./nginx-sandbox.conf:/etc/nginx/conf.d/default.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
     restart: unless-stopped
 
 volumes:
