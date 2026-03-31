@@ -9,6 +9,7 @@ services:
     environment:
       # Provider API keys — only set the ones you use
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-1234}
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -23,6 +24,7 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+      - "4001:4001"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -57,19 +59,6 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - litellm
-    restart: unless-stopped
-
-  webhook:
-    build: .
-    container_name: openhands-webhook
-    ports:
-      - "8080:8080"
-    environment:
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
-      GITHUB_TOKEN: ${GITHUB_TOKEN}
-      OPENHANDS_BASE_URL: http://openhands:3000
-    depends_on:
-      - openhands
     restart: unless-stopped
 
 volumes:

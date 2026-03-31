@@ -9,3 +9,13 @@
 
     reverse_proxy openhands:3000
 }
+
+# LiteLLM Admin UI
+{$CADDY_HOST}:4001 {
+    # Basic auth — protects the UI with a username/password on your phone
+    basicauth {
+        {$CADDY_USER} {$CADDY_PASSWORD_HASH}
+    }
+
+    reverse_proxy litellm:4000
+}
