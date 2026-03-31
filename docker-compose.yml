@@ -2,17 +2,38 @@ services:
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
     container_name: litellm
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
     volumes:
       - ./litellm_config.yaml:/app/config.yaml:ro
     environment:
       # Provider API keys — only set the ones you use
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-1234}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      STORE_MODEL_IN_DB: "true"
+      SERVER_ROOT_PATH: "/"
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - postgres
+    networks:
+      - default
+      - db_network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - db_network
     restart: unless-stopped
 
   caddy:
@@ -53,7 +74,7 @@ services:
       AGENT_SERVER_IMAGE_TAG: 1.15.0-python
       LOG_ALL_EVENTS: "true"
       LLM_MODEL: ${LLM_MODEL}            # must match a model_name in litellm_config.yaml
-      LLM_API_KEY: "dummy"               # LiteLLM has no auth; any non-empty value works
+      LLM_API_KEY: ${LITELLM_MASTER_KEY:-sk-1234} # Authenticate with LiteLLM proxy
       LLM_BASE_URL: http://litellm:4000  # route all LLM calls through LiteLLM
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -64,3 +85,8 @@ services:
 volumes:
   caddy-data:
   caddy-config:
+  postgres-data:
+
+networks:
+  db_network:
+    internal: true

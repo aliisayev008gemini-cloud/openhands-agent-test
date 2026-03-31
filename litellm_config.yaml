@@ -50,5 +50,4 @@ model_list:
       model: ollama/llama3
       api_base: http://host.docker.internal:11434
 
-general_settings:
-  # No master_key — LiteLLM is internal Docker network only, auth not needed.
+general_settings: {}
